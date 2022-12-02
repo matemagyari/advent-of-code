@@ -5,7 +5,7 @@ import scala.io.Source
 
 object InputLoader {
 
-  def download(url: String): String = Source.fromURL(url, "UTF-8").mkString
+  def load(url: URL): String = Source.fromURL(url, "UTF-8").mkString
 
   def loadAsLines(url: URL): Iterator[String] = Source.fromURL(url, "UTF-8").getLines()
 
