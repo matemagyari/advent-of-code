@@ -3,14 +3,12 @@ package home.adventofcode.year2022
 import home.adventofcode.InputLoader
 
 import java.util.concurrent.atomic.AtomicLong
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object Day16 extends App {
 
   val timeWindow = 30
-
-  val start = Valve("AA")
 
   case class Valve(code: String)
 
@@ -20,7 +18,8 @@ object Day16 extends App {
     override def compare(x: Elem, y: Elem): Int = x.valves.size.compare(y.valves.size)
   }
 
-  val (graph: Map[Valve, Set[Valve]], rates: Map[Valve, Int]) = {
+
+  val (start: Valve, graph: Map[Valve, Set[Valve]], rates: Map[Valve, Int]) = {
 
     val lineRegex = """Valve (.*) has flow rate=(\d+); tunnel.? lead.? to valve.? (.*)""".r
 
@@ -36,13 +35,18 @@ object Day16 extends App {
       }
     }
 
-    InputLoader
-                  .loadAsLines("inputs/day16.txt")
-//      .loadAsLines("inputs/day16test.txt")
-      .map(parseLine)
-      .toSet
+    val lines: List[String] = InputLoader
+      .loadAsLines("inputs/day16.txt")
+      //            .loadAsLines("inputs/day16test.txt")
+      .toList
 
-    (graphMap.toMap, ratesMap.toMap)
+    val start: Valve = lines.head match {
+      case lineRegex(from, _, _) => Valve(from)
+    }
+
+    lines.foreach(parseLine)
+
+    (start, graphMap.toMap, ratesMap.toMap)
   }
 
   val shortestPaths: Map[Valve, Map[Valve, List[Valve]]] =
@@ -87,7 +91,6 @@ object Day16 extends App {
   implicit val pathOrdering: Ordering[Path] = new Ordering[Path] {
     override def compare(x: Path, y: Path): Int =
       y.actions.size.compare(x.actions.size) // take short first
-//          x.actions.size.compare(y.actions.size)
   }
 
   def children(path: Path): List[Path] = {
@@ -97,27 +100,18 @@ object Day16 extends App {
 
         def shouldOpen(v: Valve): Boolean = rates(v) > 0 && !path.openValves.contains(v)
 
-        val openAction: Option[Action] = if (shouldOpen(lastValve)) Some(Open) else None
+        // find the first steps towards closed valves
+        val shortestPathsToClosedValves: List[List[Valve]] = {
 
-        val moveActions: List[List[Action]] = {
+          val remainingTime = timeWindow - path.actions.size + 1
 
-          // find the first steps towards closed valves
-          val shortestPathsToClosedValves: List[List[Valve]] = {
-
-            val alreadyVisitedSinceLastOpen = path.walkSinceLastOpening.toSet
-            val remainingTime = timeWindow - path.actions.size + 1
-
-            shortestPaths(lastValve)
-              .collect { case (v, steps) if shouldOpen(v) => steps }
-              .filter(_.size <= remainingTime) // which are still reachable
-              .toList
-              .filterNot { steps => steps.headOption.exists(alreadyVisitedSinceLastOpen.contains) }
-          }
-
-          shortestPathsToClosedValves.map { steps => steps.map(Move(_)) }
+          shortestPaths(lastValve)
+            .collect { case (v, steps) if shouldOpen(v) => steps }
+            .filter(_.size <= remainingTime) // which are still reachable
+            .toList
         }
 
-        List(openAction.toList) ++ moveActions
+        shortestPathsToClosedValves.map { steps => steps.map(Move(_)) :+ Open }
       }
       .getOrElse(List.empty)
       .filterNot(_.isEmpty)
@@ -138,8 +132,14 @@ object Day16 extends App {
         case Move(to) => current = to
       }
     }
+
+
     // remainingTime
     releasedPressure += openValves.map(rates).sum * (timeWindow - path.actions.length + 1)
+
+    if (path.actions.lastOption.exists(_ == Open)) {
+      releasedPressure += openValves.map(rates).sum
+    }
 
     releasedPressure
   }
@@ -150,13 +150,12 @@ object Day16 extends App {
     queue.enqueue(Path.create())
 
     val completed = ListBuffer.empty[Path]
+    val contender = ListBuffer.empty[Path]
 
     val counter = new AtomicLong()
 
     var maxLen = 0
     var start = System.currentTimeMillis()
-
-    var maxSoFar = 0
 
     while (!queue.isEmpty) {
       counter.incrementAndGet()
@@ -164,30 +163,31 @@ object Day16 extends App {
       if (path.actions.size > maxLen) {
         maxLen = path.actions.size
         println(s"Level $maxLen ${System.currentTimeMillis() - start}. Num: ${queue.size}")
-        counter.set(0)
         start = System.currentTimeMillis()
       }
       if (path.openValves == nonZeroValves) {
         println(s"completed! ${completed.size}")
         completed += path
-      } else if (path.actions.length == 31) {
-        val w = valueOf(path)
-        if (w > maxSoFar) {
-          maxSoFar = w
-          println(s"Max: $maxSoFar")
-        }
+      }
+      else if (path.actions.length == 31) {
+        contender += path
         //println(s"Throwing out $path")
         // should have opened all valves, bye
       }
       else {
         val ps = children(path)
+        if (ps.isEmpty) {
+          contender += path
+        }
         queue.enqueue(ps: _*)
       }
     }
 
-    println(s"iterations: ${counter.get}")
+    println(s"iterations: ${counter.get} contender ${contender.size} completed ${completed.size}")
     if (completed.nonEmpty)
       completed.maxBy(valueOf)
+    else if (contender.nonEmpty)
+      contender.maxBy(valueOf)
     else
       queue.toList.maxBy(valueOf)
 
@@ -231,8 +231,7 @@ object Day16 extends App {
     1
   }
 
-  println(task1()) //
-  //  println(task2()) // Position(3156345,3204261) = 12625383204261
+  println(task1()) // 1724
 
 
 }
