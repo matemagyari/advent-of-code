@@ -73,17 +73,12 @@ object Day16 extends App {
   case class Path(
                    actions: List[Action],
                    openValves: Set[Valve] = Set.empty,
-                   lastValve: Option[Valve] = None,
-                   lastOpenedValveIdx: Option[Int] = None) {
-
-    lazy val walkSinceLastOpening: List[Valve] =
-      actions.drop(lastOpenedValveIdx.getOrElse(0)).collect { case Move(valve) => valve }
+                   lastValve: Option[Valve] = None) {
 
     def add(action: Action): Path = action match {
       case Open => copy(
         actions = actions :+ action,
-        openValves = openValves ++ actions.lastOption.collect { case Move(valve) => valve }.toSet,
-        lastOpenedValveIdx = Some(actions.length - 1))
+        openValves = openValves ++ actions.lastOption.collect { case Move(valve) => valve }.toSet)
       case Move(valve) => copy(actions = actions :+ action, lastValve = Some(valve))
     }
   }
