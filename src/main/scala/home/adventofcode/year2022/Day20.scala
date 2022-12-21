@@ -3,12 +3,15 @@ package home.adventofcode.year2022
 import home.adventofcode.InputLoader
 import home.adventofcode.year2022.Planner._
 
+import java.time.LocalDate
 import scala.collection.mutable
 
 object Day20 extends App {
 
-//  val file = "inputs/day20.txt"
-    val file = "inputs/day20test.txt"
+    val file = "inputs/day20.txt"
+//  val file = "inputs/day20test.txt"
+
+  val logEnabled = false
 
 
   val nums: List[Int] = InputLoader
@@ -33,29 +36,39 @@ object Day20 extends App {
     }
 
     def print(): Unit = {
-      println(s"Current: ${toList().mkString(",")}")
+      log(s"Current: ${toList().mkString(",")}")
     }
 
-    println("Initial")
+    println(s"Initial ${nums.size}")
     print()
     nums
       .zipWithIndex
       .map { case (num, idx) => Elem(num, idx) }
       .foreach { numToMove =>
 
-        isValid()
+        if (numToMove.idx % 500 == 0) {
+          println(numToMove.idx)
+        }
+
+        //        isValid()
 
         val oldPosition: Int = positions(numToMove)
         val newPosition: Int = {
           val np = (oldPosition + numToMove.num) % nums.size
-          if (np <= 0)
-            nums.size + np - 1
-          else if (np < oldPosition)
-            np + 1
-          else np
+          val changed = oldPosition != np
+          if (changed)
+            if (np <= 0)
+              nums.size + np - 1
+            else if (np == nums.size - 1)
+              0
+            else if (np < oldPosition)
+              np + 1
+            else np
+          else
+            np
         }
 
-        println(s"$numToMove moves from $oldPosition to $newPosition")
+        log(s"$numToMove moves from $oldPosition to $newPosition")
 
         positions += numToMove -> newPosition
 
@@ -104,8 +117,14 @@ object Day20 extends App {
     1
   }
 
-  println(task1()) //
+  println(task1()) // 3234 - too low
   //  println(task2()) //
+
+  def log(text: String): Unit = {
+    if (logEnabled) {
+      println(s"${LocalDate.now()} $text")
+    }
+  }
 
 
 }
