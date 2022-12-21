@@ -36,8 +36,8 @@ object Day16 extends App {
     }
 
     val lines: List[String] = InputLoader
-      .loadAsLines("inputs/day16.txt")
-      //            .loadAsLines("inputs/day16test.txt")
+//      .loadAsLines("inputs/day16.txt")
+                  .loadAsLines("inputs/day16test.txt")
       .toList
 
     val start: Valve = lines.head match {
@@ -83,6 +83,15 @@ object Day16 extends App {
     }
   }
 
+  case class Path2(path1: Path, path2: Path)
+
+
+  implicit val path2Ordering: Ordering[Path2] = new Ordering[Path2] {
+    override def compare(x: Path2, y: Path2): Int =
+      y.path1.actions.size.compare(x.path1.actions.size) // take short first
+  }
+
+
   implicit val pathOrdering: Ordering[Path] = new Ordering[Path] {
     override def compare(x: Path, y: Path): Int =
       y.actions.size.compare(x.actions.size) // take short first
@@ -116,6 +125,28 @@ object Day16 extends App {
     }
   }
 
+  def children2(path: Path2): List[Path2] = {
+    val c1 = children(path.path1)
+    val c2 = children(path.path2)
+    //println(s"Next paths ${c1.size} ${c2.size}")
+
+    val possibilities: List[(Path, Path)] = for {
+      p1 <- c1
+      p2 <- c2
+      if p1.lastValve != p2.lastValve
+    } yield (p1, p2)
+
+    possibilities
+      .minByOption { case (path1, path2) => path1.actions.size + path2.actions.size }
+      .map { case (path1, path2) => Path2(path1, path2) }
+      .toList
+  }
+
+
+  def valueOf(path: Path2): Int = {
+    valueOf(path.path1) + valueOf(path.path2)
+  }
+
   def valueOf(path: Path): Int = {
     var releasedPressure: Int = 0
     val openValves = ListBuffer.empty[Valve]
@@ -127,7 +158,6 @@ object Day16 extends App {
         case Move(to) => current = to
       }
     }
-
 
     // remainingTime
     releasedPressure += openValves.map(rates).sum * (timeWindow - path.actions.length + 1)
@@ -188,6 +218,55 @@ object Day16 extends App {
 
   }
 
+ def findBestPath2(): Path2 = {
+    val queue = new mutable.PriorityQueue[Path2]()
+
+    queue.enqueue(Path2(Path.create(), Path.create()))
+
+    val completed = ListBuffer.empty[Path2]
+    val contender = ListBuffer.empty[Path2]
+
+    val counter = new AtomicLong()
+
+    var maxLen = 0
+    var start = System.currentTimeMillis()
+
+    while (!queue.isEmpty) {
+      counter.incrementAndGet()
+      val path = queue.dequeue()
+      if (path.path1.actions.size > maxLen) {
+        maxLen = path.path1.actions.size
+        println(s"Level $maxLen ${System.currentTimeMillis() - start}. Num: ${queue.size}")
+        start = System.currentTimeMillis()
+      }
+      if ((path.path1.openValves ++ path.path2.openValves)  == nonZeroValves) {
+        println(s"completed! ${completed.size}")
+        completed += path
+      }
+      else if (path.path1.actions.length == 27) {
+        contender += path
+        //println(s"Throwing out $path")
+        // should have opened all valves, bye
+      }
+      else {
+        val ps = children2(path)
+        if (ps.isEmpty) {
+          contender += path
+        }
+        queue.enqueue(ps: _*)
+      }
+    }
+
+    println(s"iterations: ${counter.get} contender ${contender.size} completed ${completed.size}")
+    if (completed.nonEmpty)
+      completed.maxBy(valueOf)
+    else if (contender.nonEmpty)
+      contender.maxBy(valueOf)
+    else
+      queue.toList.maxBy(valueOf)
+
+  }
+
   def calculateShortestPaths(start: Valve): Map[Valve, List[Valve]] = {
 
     val queue = new mutable.PriorityQueue[Elem]()
@@ -222,11 +301,13 @@ object Day16 extends App {
 
 
   def task2(): Long = {
-
-    1
+    println("Graph created")
+    val bestPath = findBestPath2()
+    valueOf(bestPath)
   }
 
-  println(task1()) // 1724
+//  println(task1()) // 1724
+  println(task2()) // 1724
 
 
 }

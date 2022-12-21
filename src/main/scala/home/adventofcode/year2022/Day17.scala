@@ -10,7 +10,7 @@ object Day17 extends App {
 
   val startingDY = 4
   val width = 7
-  val drawingEnabled = false
+  var drawingEnabled = false
 
   sealed trait Push
   case object Left extends Push
@@ -100,6 +100,20 @@ object Day17 extends App {
     }
   }
 
+
+  def getLines(filledPositions: Set[Position]): List[String] = {
+    val lines = ListBuffer.empty[String]
+    val maxY = if (filledPositions.isEmpty) startingDY - 1 else Math.max(filledPositions.map(_.y).max, 7)
+
+    for (y <- maxY to 0 by -1) {
+      val line = (0 to width - 1).map { x =>
+        if (filledPositions.contains(Position(x, y))) "#" else "."
+      }.mkString
+      lines += line
+    }
+    lines.toList
+  }
+
   def task1(): Long = {
 
     var highestPoint = -1
@@ -166,9 +180,25 @@ object Day17 extends App {
     }
 
     println(s"restingRocks $restingRocks highestPoint $highestPoint")
+    drawingEnabled = true
+    draw(filledPositions.toSet)
+
+
+    val lines: List[String] = getLines(filledPositions.toSet)
+
+    println(s"lines.size ${lines.size}")
+
+    val groupsOf10: List[List[String]] = lines.grouped(10).toList
+    println(s"groupsOf10.size ${groupsOf10.size}")
+    println(s"groupsOf10.toSet.size ${groupsOf10.toSet.size}")
+
+//    println("\nTEST\n")
+//    println(lines.take(10).mkString("\n"))
 
     // +1 because highestPoint is index starting with zero
     highestPoint + 1
+
+
 
   }
 

@@ -2,9 +2,6 @@ package home.adventofcode.year2022
 
 import home.adventofcode.InputLoader
 
-import java.util.concurrent.atomic.AtomicLong
-import scala.collection.immutable
-
 object Day15 extends App {
 
   case class Position(x: Int, y: Int)
